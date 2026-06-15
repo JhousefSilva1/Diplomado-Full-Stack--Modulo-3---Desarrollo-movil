@@ -7,11 +7,13 @@ class PuzzleNode {
   final int g;
   final int h;
 
+
   PuzzleNode({
     required this.state,
     required this.path,
     required this.g,
     required this.h,
+ 
   });
 
   int get f => g + h;
@@ -29,6 +31,19 @@ class NumberPuzzleView extends StatefulWidget {
 }
 
 class _NumberPuzzleViewState extends State<NumberPuzzleView> {
+
+  bool canMovePiece(int index) {
+  int emptyIndex = pieces.indexOf(0);
+
+  int selectedRow = index ~/ widget.size;
+  int selectedCol = index % widget.size;
+
+  int emptyRow = emptyIndex ~/ widget.size;
+  int emptyCol = emptyIndex % widget.size;
+
+  return (selectedRow == emptyRow && (selectedCol - emptyCol).abs() == 1) ||
+      (selectedCol == emptyCol && (selectedRow - emptyRow).abs() == 1);
+}
 
 
   void showFinalSolutionDialog() {
@@ -390,6 +405,7 @@ void dispose() {
   int seconds = 0;
   Timer? timer;
   bool gameFinished = false;
+  int? lastMovedPiece;
 
   @override
   void initState() {
@@ -428,31 +444,35 @@ void dispose() {
       seconds = 0;
     }
 
-      void movePiece(int index) {
-    int emptyIndex = pieces.indexOf(0);
-
-    int selectedRow = index ~/ widget.size;
-    int selectedCol = index % widget.size;
-
-    int emptyRow = emptyIndex ~/ widget.size;
-    int emptyCol = emptyIndex % widget.size;
-
-    bool isNextToEmpty =
-        (selectedRow == emptyRow && (selectedCol - emptyCol).abs() == 1) ||
-        (selectedCol == emptyCol && (selectedRow - emptyRow).abs() == 1);
-
-if (isNextToEmpty && !gameFinished) {
-  setState(() {
-    int temp = pieces[index];
-    pieces[index] = pieces[emptyIndex];
-    pieces[emptyIndex] = temp;
-
-    moves++;
-  });
-
-  checkIfGameFinished();
-}
+void movePiece(int index) {
+  if (gameFinished) {
+    return;
   }
+
+  int emptyIndex = pieces.indexOf(0);
+
+  if (canMovePiece(index)) {
+    setState(() {
+      int temp = pieces[index];
+
+      pieces[index] = pieces[emptyIndex];
+      pieces[emptyIndex] = temp;
+
+      lastMovedPiece = temp;
+      moves++;
+    });
+
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (mounted) {
+        setState(() {
+          lastMovedPiece = null;
+        });
+      }
+    });
+
+    checkIfGameFinished();
+  }
+}
 
 void shuffleByValidMoves() {
   setState(() {
@@ -1045,34 +1065,62 @@ Row(
                         );
                       }
 
-                      return GestureDetector(
-                        onTap: () {
-                          movePiece(index);
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 6,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              piece.toString(),
-                              style: TextStyle(
-                                color: Colors.deepPurple,
-                                fontSize: widget.size == 5 ? 22 : 28,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
+bool isMovable = canMovePiece(index);
+bool isLastMoved = lastMovedPiece == piece;
+
+return GestureDetector(
+  onTap: () {
+    movePiece(index);
+  },
+  child: AnimatedScale(
+    scale: isLastMoved ? 1.08 : 1.0,
+    duration: const Duration(milliseconds: 180),
+    curve: Curves.easeOutBack,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        color: isMovable
+            ? Colors.amber.withValues(alpha: 0.95)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isMovable ? Colors.white : Colors.transparent,
+          width: isMovable ? 2 : 0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isMovable
+                ? Colors.amber.withValues(alpha: 0.55)
+                : Colors.black.withValues(alpha: 0.25),
+            blurRadius: isMovable ? 14 : 6,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        transitionBuilder: (child, animation) {
+          return ScaleTransition(
+            scale: animation,
+            child: child,
+          );
+        },
+        child: Center(
+          key: ValueKey(piece),
+          child: Text(
+            piece.toString(),
+            style: TextStyle(
+              color: isMovable ? Colors.deepPurple : Colors.deepPurple,
+              fontSize: widget.size == 5 ? 22 : 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    ),
+  ),
+);
                     },
                   ),
                 ),
@@ -1081,83 +1129,83 @@ Row(
 
                 const SizedBox(height: 18),
 
-Row(
-  children: [
-    Expanded(
-      child: _buildGameButton(
-        text: 'Mezclar',
-        icon: Icons.shuffle,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.deepPurple,
-        onPressed: () {
-          shuffleByValidMoves();
-        },
-      ),
-    ),
-
-    const SizedBox(width: 12),
-
-    Expanded(
-      child: _buildGameButton(
-        text: 'Resolver A*',
-        icon: Icons.psychology,
-        backgroundColor: Colors.amber,
-        foregroundColor: Colors.deepPurple,
-        onPressed: () async {
-          List<List<int>> solution = solveWithAStar();
-
-          if (solution.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No se encontró solución'),
-              ),
-            );
-            return;
-          }
-
-          await animateSolution(solution);
-        },
-      ),
-    ),
-  ],
-),
-
-const SizedBox(height: 12),
-
-Row(
-  children: [
-    Expanded(
-      child: _buildGameButton(
-        text: 'Paso a paso',
-        icon: Icons.visibility,
-        backgroundColor: Colors.white.withValues(alpha: 0.90),
-        foregroundColor: Colors.deepPurple,
-        onPressed: () {
-          showStepByStepSolutionDialog();
-        },
-      ),
-    ),
-
-    const SizedBox(width: 12),
-
-    Expanded(
-      child: _buildGameButton(
-        text: 'Solución',
-        icon: Icons.check_circle,
-        backgroundColor: Colors.white.withValues(alpha: 0.90),
-        foregroundColor: Colors.deepPurple,
-        onPressed: () {
-          showFinalSolutionDialog();
-        },
-      ),
-    ),
-  ],
-),
-                              ],
-            ),
+    Row(
+      children: [
+        Expanded(
+          child: _buildGameButton(
+            text: 'Mezclar',
+            icon: Icons.shuffle,
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.deepPurple,
+            onPressed: () {
+              shuffleByValidMoves();
+            },
           ),
         ),
-      ),
-    );
-  }
-}
+
+        const SizedBox(width: 12),
+
+        Expanded(
+          child: _buildGameButton(
+            text: 'Resolver A*',
+            icon: Icons.psychology,
+            backgroundColor: Colors.amber,
+            foregroundColor: Colors.deepPurple,
+            onPressed: () async {
+              List<List<int>> solution = solveWithAStar();
+
+              if (solution.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No se encontró solución'),
+                  ),
+                );
+                return;
+              }
+
+              await animateSolution(solution);
+            },
+          ),
+        ),
+      ],
+    ),
+
+    const SizedBox(height: 12),
+
+    Row(
+      children: [
+        Expanded(
+          child: _buildGameButton(
+            text: 'Paso a paso',
+            icon: Icons.visibility,
+            backgroundColor: Colors.white.withValues(alpha: 0.90),
+            foregroundColor: Colors.deepPurple,
+            onPressed: () {
+              showStepByStepSolutionDialog();
+            },
+          ),
+        ),
+
+        const SizedBox(width: 12),
+
+        Expanded(
+          child: _buildGameButton(
+            text: 'Solución',
+            icon: Icons.check_circle,
+            backgroundColor: Colors.white.withValues(alpha: 0.90),
+            foregroundColor: Colors.deepPurple,
+            onPressed: () {
+              showFinalSolutionDialog();
+            },
+          ),
+        ),
+      ],
+    ),
+                                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
