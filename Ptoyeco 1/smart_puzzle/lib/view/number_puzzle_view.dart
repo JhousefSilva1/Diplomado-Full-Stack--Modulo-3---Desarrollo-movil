@@ -1,616 +1,192 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class PuzzleNode {
   final List<int> state;
   final List<List<int>> path;
   final int g;
   final int h;
-
   PuzzleNode({
     required this.state,
     required this.path,
     required this.g,
     required this.h,
   });
-
   int get f => g + h;
 }
-
 class NumberPuzzleView extends StatefulWidget {
   final int size;
-
   const NumberPuzzleView({
     super.key,
     required this.size,
   });
-
   @override
   State<NumberPuzzleView> createState() => _NumberPuzzleViewState();
 }
-
 class _NumberPuzzleViewState extends State<NumberPuzzleView> {
-  // =========================
-  // VARIABLES
-  // =========================
-
-  late List<int> pieces;
-
-  int moves = 0;
-  int seconds = 0;
-
-  Timer? timer;
-
-  bool gameFinished = false;
-  int? lastMovedPiece;
-
-  // =========================
-  // CICLO DE VIDA
-  // =========================
-
-  @override
-  void initState() {
-    super.initState();
-
-    int totalPieces = widget.size * widget.size;
-
-    pieces = List.generate(totalPieces, (index) {
-      if (index == totalPieces - 1) {
-        return 0;
-      }
-
-      return index + 1;
-    });
-
-    startTimer();
-  }
-
-  @override
-  void dispose() {
-    timer?.cancel();
-    super.dispose();
-  }
-
-  // =========================
-  // LÓGICA DEL JUEGO
-  // =========================
-
-  void startTimer() {
-    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        seconds++;
-      });
-    });
-  }
-
-  String formatTime() {
-    int minutes = seconds ~/ 60;
-    int remainingSeconds = seconds % 60;
-
-    String minutesText = minutes.toString().padLeft(2, '0');
-    String secondsText = remainingSeconds.toString().padLeft(2, '0');
-
-    return '$minutesText:$secondsText';
-  }
-
-  void resetGameStats() {
-    moves = 0;
-    seconds = 0;
-  }
 
   bool canMovePiece(int index) {
-    int emptyIndex = pieces.indexOf(0);
+  int emptyIndex = pieces.indexOf(0);
 
-    int selectedRow = index ~/ widget.size;
-    int selectedCol = index % widget.size;
+  int selectedRow = index ~/ widget.size;
+  int selectedCol = index % widget.size;
 
-    int emptyRow = emptyIndex ~/ widget.size;
-    int emptyCol = emptyIndex % widget.size;
+  int emptyRow = emptyIndex ~/ widget.size;
+  int emptyCol = emptyIndex % widget.size;
 
-    return (selectedRow == emptyRow && (selectedCol - emptyCol).abs() == 1) ||
-        (selectedCol == emptyCol && (selectedRow - emptyRow).abs() == 1);
-  }
-
-  void movePiece(int index) {
-    if (gameFinished) {
-      return;
-    }
-
-    int emptyIndex = pieces.indexOf(0);
-
-    if (canMovePiece(index)) {
-      setState(() {
-        int temp = pieces[index];
-
-        pieces[index] = pieces[emptyIndex];
-        pieces[emptyIndex] = temp;
-
-        lastMovedPiece = temp;
-        moves++;
-      });
-
-      Future.delayed(const Duration(milliseconds: 250), () {
-        if (mounted) {
-          setState(() {
-            lastMovedPiece = null;
-          });
-        }
-      });
-
-      checkIfGameFinished();
-    }
-  }
-
-  void shuffleByValidMoves() {
-    setState(() {
-      resetGameStats();
-      gameFinished = false;
-
-      timer?.cancel();
-      startTimer();
-
-      int totalPieces = widget.size * widget.size;
-
-      pieces = List.generate(totalPieces, (index) {
-        if (index == totalPieces - 1) {
-          return 0;
-        }
-
-        return index + 1;
-      });
-
-      int shuffleMoves = widget.size == 4 ? 80 : 120;
-
-      for (int i = 0; i < shuffleMoves; i++) {
-        int emptyIndex = pieces.indexOf(0);
-
-        int emptyRow = emptyIndex ~/ widget.size;
-        int emptyCol = emptyIndex % widget.size;
-
-        List<int> possibleMoves = [];
-
-        if (emptyRow > 0) {
-          possibleMoves.add(emptyIndex - widget.size);
-        }
-
-        if (emptyRow < widget.size - 1) {
-          possibleMoves.add(emptyIndex + widget.size);
-        }
-
-        if (emptyCol > 0) {
-          possibleMoves.add(emptyIndex - 1);
-        }
-
-        if (emptyCol < widget.size - 1) {
-          possibleMoves.add(emptyIndex + 1);
-        }
-
-        possibleMoves.shuffle();
-
-        int moveIndex = possibleMoves.first;
-
-        int temp = pieces[emptyIndex];
-        pieces[emptyIndex] = pieces[moveIndex];
-        pieces[moveIndex] = temp;
-      }
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Puzzle mezclado correctamente'),
-      ),
-    );
-  }
-
-  void checkIfGameFinished() {
-    if (isGoal(pieces) && !gameFinished) {
-      gameFinished = true;
-      timer?.cancel();
-
-      showGameFinishedDialog();
-    }
-  }
-
-  // =========================
-  // ALGORITMO A*
-  // =========================
-
-  String stateToString(List<int> state) {
-    return state.join(',');
-  }
-
-  List<int> getGoalState() {
-    int totalPieces = widget.size * widget.size;
-
-    return List.generate(totalPieces, (index) {
-      if (index == totalPieces - 1) {
-        return 0;
-      }
-
-      return index + 1;
-    });
-  }
-
-  bool isGoal(List<int> state) {
-    List<int> goal = getGoalState();
-
-    for (int i = 0; i < state.length; i++) {
-      if (state[i] != goal[i]) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  int manhattanDistance(List<int> state) {
-    int distance = 0;
-
-    for (int i = 0; i < state.length; i++) {
-      int piece = state[i];
-
-      if (piece == 0) {
-        continue;
-      }
-
-      int currentRow = i ~/ widget.size;
-      int currentCol = i % widget.size;
-
-      int goalIndex = piece - 1;
-      int goalRow = goalIndex ~/ widget.size;
-      int goalCol = goalIndex % widget.size;
-
-      distance += (currentRow - goalRow).abs() + (currentCol - goalCol).abs();
-    }
-
-    return distance;
-  }
-
-  List<List<int>> getNeighbors(List<int> state) {
-    List<List<int>> neighbors = [];
-
-    int emptyIndex = state.indexOf(0);
-
-    int emptyRow = emptyIndex ~/ widget.size;
-    int emptyCol = emptyIndex % widget.size;
-
-    List<int> possibleMoves = [];
-
-    if (emptyRow > 0) {
-      possibleMoves.add(emptyIndex - widget.size);
-    }
-
-    if (emptyRow < widget.size - 1) {
-      possibleMoves.add(emptyIndex + widget.size);
-    }
-
-    if (emptyCol > 0) {
-      possibleMoves.add(emptyIndex - 1);
-    }
-
-    if (emptyCol < widget.size - 1) {
-      possibleMoves.add(emptyIndex + 1);
-    }
-
-    for (int moveIndex in possibleMoves) {
-      List<int> newState = List.from(state);
-
-      int temp = newState[emptyIndex];
-      newState[emptyIndex] = newState[moveIndex];
-      newState[moveIndex] = temp;
-
-      neighbors.add(newState);
-    }
-
-    return neighbors;
-  }
-
-  List<List<int>> solveWithAStar() {
-    List<int> start = List.from(pieces);
-
-    List<PuzzleNode> openList = [];
-    Set<String> closedList = {};
-
-    openList.add(
-      PuzzleNode(
-        state: start,
-        path: [start],
-        g: 0,
-        h: manhattanDistance(start),
-      ),
-    );
-
-    int iterations = 0;
-    int maxIterations = 20000;
-
-    while (openList.isNotEmpty && iterations < maxIterations) {
-      iterations++;
-
-      openList.sort((a, b) => a.f.compareTo(b.f));
-
-      PuzzleNode currentNode = openList.removeAt(0);
-
-      if (isGoal(currentNode.state)) {
-        return currentNode.path;
-      }
-
-      closedList.add(stateToString(currentNode.state));
-
-      List<List<int>> neighbors = getNeighbors(currentNode.state);
-
-      for (List<int> neighbor in neighbors) {
-        String key = stateToString(neighbor);
-
-        if (closedList.contains(key)) {
-          continue;
-        }
-
-        List<List<int>> newPath = List.from(currentNode.path);
-        newPath.add(neighbor);
-
-        openList.add(
-          PuzzleNode(
-            state: neighbor,
-            path: newPath,
-            g: currentNode.g + 1,
-            h: manhattanDistance(neighbor),
-          ),
-        );
-      }
-    }
-
-    return [];
-  }
-
-  Future<void> animateSolution(List<List<int>> solution) async {
-    for (int i = 1; i < solution.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 400));
-
-      setState(() {
-        pieces = List.from(solution[i]);
-        moves++;
-      });
-    }
-
-    checkIfGameFinished();
-  }
-
-  // =========================
-  // DIÁLOGOS
-  // =========================
+  return (selectedRow == emptyRow && (selectedCol - emptyCol).abs() == 1) ||
+      (selectedCol == emptyCol && (selectedRow - emptyRow).abs() == 1);
+}
 
   void showFinalSolutionDialog() {
-    List<int> goalState = getGoalState();
+  List<int> goalState = getGoalState();
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
+  showDialog(
+    context: context,
+    builder: (context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: _dialogDecoration(),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: Colors.amber,
-                  size: 52,
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Solución final',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Así debe quedar armado el puzzle',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 260,
-                  child: buildMiniBoard(goalState),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.deepPurple,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      'Entendido',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF4A148C),
+                Color(0xFF7B1FA2),
+                Color(0xFFBA68C8),
               ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.check_circle,
+                color: Colors.amber,
+                size: 52,
+              ),
+
+              const SizedBox(height: 12),
+
+              const Text(
+                'Solución final',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              const Text(
+                'Así debe quedar armado el puzzle',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 15,
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              SizedBox(
+                height: 260,
+                child: buildMiniBoard(goalState),
+              ),
+
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Entendido',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+  Widget buildMiniBoard(List<int> state) {
+  return AspectRatio(
+    aspectRatio: 1,
+    child: GridView.builder(
+      itemCount: state.length,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: widget.size,
+        crossAxisSpacing: 5,
+        mainAxisSpacing: 5,
+      ),
+      itemBuilder: (context, index) {
+        int piece = state[index];
+
+        if (piece == 0) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.30),
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(
+              piece.toString(),
+              style: TextStyle(
+                color: Colors.deepPurple,
+                fontSize: widget.size == 5 ? 13 : 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 
-  void showStepByStepSolutionDialog() {
-    List<List<int>> solution = solveWithAStar();
+  
 
-    if (solution.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se encontró solución'),
-        ),
-      );
+void checkIfGameFinished() {
+  if (isGoal(pieces) && !gameFinished) {
+    gameFinished = true;
+    timer?.cancel();
 
-      return;
-    }
-
-    int currentPage = 0;
-    PageController pageController = PageController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: _dialogDecoration(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.lightbulb,
-                      color: Colors.amber,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Solución encontrada',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Pasos necesarios: ${solution.length - 1}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      currentPage == 0
-                          ? 'Estado inicial'
-                          : 'Paso $currentPage de ${solution.length - 1}',
-                      style: const TextStyle(
-                        color: Colors.amber,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      height: 260,
-                      child: PageView.builder(
-                        controller: pageController,
-                        itemCount: solution.length,
-                        onPageChanged: (index) {
-                          setDialogState(() {
-                            currentPage = index;
-                          });
-                        },
-                        itemBuilder: (context, index) {
-                          return buildMiniBoard(solution[index]);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: currentPage == 0
-                                ? null
-                                : () {
-                                    pageController.previousPage(
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  },
-                            icon: const Icon(Icons.arrow_back),
-                            label: const Text('Anterior'),
-                            style: _dialogButtonStyle(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.deepPurple,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: currentPage == solution.length - 1
-                                ? null
-                                : () {
-                                    pageController.nextPage(
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  },
-                            icon: const Icon(Icons.arrow_forward),
-                            label: const Text('Siguiente'),
-                            style: _dialogButtonStyle(
-                              backgroundColor: Colors.amber,
-                              foregroundColor: Colors.deepPurple,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text(
-                          'Cerrar',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void showGameFinishedDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -621,14 +197,41 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
           ),
           child: Container(
             padding: const EdgeInsets.all(24),
-            decoration: _dialogDecoration(
-              borderRadius: 28,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF4A148C),
+                  Color(0xFF7B1FA2),
+                  Color(0xFFBA68C8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildWinnerIcon(),
+                Container(
+                  width: 86,
+                  height: 86,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.20),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.amber,
+                      width: 3,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.emoji_events,
+                    color: Colors.amber,
+                    size: 52,
+                  ),
+                ),
+
                 const SizedBox(height: 20),
+
                 const Text(
                   '¡Puzzle completado!',
                   textAlign: TextAlign.center,
@@ -638,7 +241,9 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 8),
+
                 const Text(
                   'Excelente trabajo',
                   textAlign: TextAlign.center,
@@ -647,23 +252,87 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
                     fontSize: 16,
                   ),
                 ),
+
                 const SizedBox(height: 24),
+
                 Row(
                   children: [
-                    _buildResultCard(
-                      icon: Icons.timer,
-                      value: formatTime(),
-                      label: 'Tiempo',
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.timer,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              formatTime(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Tiempo',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
+
                     const SizedBox(width: 12),
-                    _buildResultCard(
-                      icon: Icons.touch_app,
-                      value: moves.toString(),
-                      label: 'Movimientos',
+
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.touch_app,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              moves.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Movimientos',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 24),
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -690,7 +359,9 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 10),
+
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
@@ -711,109 +382,582 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
       },
     );
   }
+}
 
-  // =========================
-  // WIDGETS AUXILIARES
-  // =========================
 
-  BoxDecoration _screenDecoration() {
-    return const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          Color(0xFF4A148C),
-          Color(0xFF7B1FA2),
-          Color(0xFFBA68C8),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-    );
+  @override
+void dispose() {
+  timer?.cancel();
+  super.dispose();
+}
+
+
+  late List<int> pieces;
+  int moves = 0;
+  int seconds = 0;
+  Timer? timer;
+  bool gameFinished = false;
+  int? lastMovedPiece;
+
+  @override
+  void initState() {
+    super.initState();
+
+    int totalPieces = widget.size * widget.size;
+
+    pieces = List.generate(totalPieces, (index) {
+      if (index == totalPieces - 1) {
+        return 0;
+      }
+      return index + 1;
+    });
+    startTimer();
+  }
+  void startTimer() {
+      timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        setState(() {
+          seconds++;
+        });
+      });
+    }
+
+    String formatTime() {
+      int minutes = seconds ~/ 60;
+      int remainingSeconds = seconds % 60;
+
+      String minutesText = minutes.toString().padLeft(2, '0');
+      String secondsText = remainingSeconds.toString().padLeft(2, '0');
+
+      return '$minutesText:$secondsText';
+    }
+
+    void resetGameStats() {
+      moves = 0;
+      seconds = 0;
+    }
+
+void movePiece(int index) {
+  if (gameFinished) {
+    return;
   }
 
-  BoxDecoration _dialogDecoration({
-    double borderRadius = 24,
-  }) {
-    return BoxDecoration(
-      borderRadius: BorderRadius.circular(borderRadius),
-      gradient: const LinearGradient(
-        colors: [
-          Color(0xFF4A148C),
-          Color(0xFF7B1FA2),
-          Color(0xFFBA68C8),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-    );
+  int emptyIndex = pieces.indexOf(0);
+
+  if (canMovePiece(index)) {
+    setState(() {
+      int temp = pieces[index];
+
+      pieces[index] = pieces[emptyIndex];
+      pieces[emptyIndex] = temp;
+
+      lastMovedPiece = temp;
+      moves++;
+    });
+
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (mounted) {
+        setState(() {
+          lastMovedPiece = null;
+        });
+      }
+    });
+
+    checkIfGameFinished();
+  }
+}
+
+void shuffleByValidMoves() {
+  setState(() {
+    resetGameStats();
+    gameFinished = false;
+    timer?.cancel();
+    startTimer();
+    int totalPieces = widget.size * widget.size;
+
+    pieces = List.generate(totalPieces, (index) {
+      if (index == totalPieces - 1) {
+        return 0;
+      }
+      return index + 1;
+    });
+
+    int moves = widget.size == 4 ? 80 : 120;
+
+    for (int i = 0; i < moves; i++) {
+      int emptyIndex = pieces.indexOf(0);
+
+      int emptyRow = emptyIndex ~/ widget.size;
+      int emptyCol = emptyIndex % widget.size;
+
+      List<int> possibleMoves = [];
+
+      if (emptyRow > 0) {
+        possibleMoves.add(emptyIndex - widget.size);
+      }
+
+      if (emptyRow < widget.size - 1) {
+        possibleMoves.add(emptyIndex + widget.size);
+      }
+
+      if (emptyCol > 0) {
+        possibleMoves.add(emptyIndex - 1);
+      }
+
+      if (emptyCol < widget.size - 1) {
+        possibleMoves.add(emptyIndex + 1);
+      }
+
+      possibleMoves.shuffle();
+
+      int moveIndex = possibleMoves.first;
+
+      int temp = pieces[emptyIndex];
+      pieces[emptyIndex] = pieces[moveIndex];
+      pieces[moveIndex] = temp;
+    }
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Puzzle mezclado correctamente'),
+    ),
+  );
+}
+
+  String stateToString(List<int> state) {
+  return state.join(',');
+}
+
+List<int> getGoalState() {
+  int totalPieces = widget.size * widget.size;
+
+  return List.generate(totalPieces, (index) {
+    if (index == totalPieces - 1) {
+      return 0;
+    }
+    return index + 1;
+  });
+}
+
+bool isGoal(List<int> state) {
+  List<int> goal = getGoalState();
+
+  for (int i = 0; i < state.length; i++) {
+    if (state[i] != goal[i]) {
+      return false;
+    }
   }
 
-  ButtonStyle _dialogButtonStyle({
-    required Color backgroundColor,
-    required Color foregroundColor,
-  }) {
-    return ElevatedButton.styleFrom(
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
-      disabledBackgroundColor: Colors.white.withValues(alpha: 0.30),
-      disabledForegroundColor: Colors.white.withValues(alpha: 0.60),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-    );
+  return true;
+}
+
+int manhattanDistance(List<int> state) {
+  int distance = 0;
+
+  for (int i = 0; i < state.length; i++) {
+    int piece = state[i];
+
+    if (piece == 0) {
+      continue;
+    }
+
+    int currentRow = i ~/ widget.size;
+    int currentCol = i % widget.size;
+
+    int goalIndex = piece - 1;
+    int goalRow = goalIndex ~/ widget.size;
+    int goalCol = goalIndex % widget.size;
+
+    distance += (currentRow - goalRow).abs() + (currentCol - goalCol).abs();
   }
 
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.white,
-          ),
+  return distance;
+}
+
+List<List<int>> getNeighbors(List<int> state) {
+  List<List<int>> neighbors = [];
+
+  int emptyIndex = state.indexOf(0);
+
+  int emptyRow = emptyIndex ~/ widget.size;
+  int emptyCol = emptyIndex % widget.size;
+
+  List<int> possibleMoves = [];
+
+  if (emptyRow > 0) {
+    possibleMoves.add(emptyIndex - widget.size);
+  }
+
+  if (emptyRow < widget.size - 1) {
+    possibleMoves.add(emptyIndex + widget.size);
+  }
+
+  if (emptyCol > 0) {
+    possibleMoves.add(emptyIndex - 1);
+  }
+
+  if (emptyCol < widget.size - 1) {
+    possibleMoves.add(emptyIndex + 1);
+  }
+
+  for (int moveIndex in possibleMoves) {
+    List<int> newState = List.from(state);
+
+    int temp = newState[emptyIndex];
+    newState[emptyIndex] = newState[moveIndex];
+    newState[moveIndex] = temp;
+
+    neighbors.add(newState);
+  }
+
+  return neighbors;
+}
+
+List<List<int>> solveWithAStar() {
+  List<int> start = List.from(pieces);
+
+  List<PuzzleNode> openList = [];
+  Set<String> closedList = {};
+
+  openList.add(
+    PuzzleNode(
+      state: start,
+      path: [start],
+      g: 0,
+      h: manhattanDistance(start),
+    ),
+  );
+
+  int iterations = 0;
+  int maxIterations = 20000;
+
+  while (openList.isNotEmpty && iterations < maxIterations) {
+    iterations++;
+
+    openList.sort((a, b) => a.f.compareTo(b.f));
+
+    PuzzleNode currentNode = openList.removeAt(0);
+
+    if (isGoal(currentNode.state)) {
+      return currentNode.path;
+    }
+
+    closedList.add(stateToString(currentNode.state));
+
+    List<List<int>> neighbors = getNeighbors(currentNode.state);
+
+    for (List<int> neighbor in neighbors) {
+      String key = stateToString(neighbor);
+
+      if (closedList.contains(key)) {
+        continue;
+      }
+
+      List<List<int>> newPath = List.from(currentNode.path);
+      newPath.add(neighbor);
+
+      openList.add(
+        PuzzleNode(
+          state: neighbor,
+          path: newPath,
+          g: currentNode.g + 1,
+          h: manhattanDistance(neighbor),
         ),
-        Expanded(
-          child: Text(
-            'Numbers Puzzle ${widget.size}x${widget.size}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
+      );
+    }
+  }
+
+  return [];
+}
+
+Future<void> animateSolution(List<List<int>> solution) async {
+  for (int i = 1; i < solution.length; i++) {
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    setState(() {
+      pieces = List.from(solution[i]);
+      moves++;
+    });
+  }
+
+  checkIfGameFinished();
+}
+
+void showStepByStepSolutionDialog() {
+  List<List<int>> solution = solveWithAStar();
+
+  if (solution.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No se encontró solución'),
+      ),
+    );
+    return;
+  }
+
+  int currentPage = 0;
+  PageController pageController = PageController();
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
             ),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF4A148C),
+                    Color(0xFF7B1FA2),
+                    Color(0xFFBA68C8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.lightbulb,
+                    color: Colors.amber,
+                    size: 48,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  const Text(
+                    'Solución encontrada',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    'Pasos necesarios: ${solution.length - 1}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 15,
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  Text(
+                    currentPage == 0
+                        ? 'Estado inicial'
+                        : 'Paso $currentPage de ${solution.length - 1}',
+                    style: const TextStyle(
+                      color: Colors.amber,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  SizedBox(
+                    height: 260,
+                    child: PageView.builder(
+                      controller: pageController,
+                      itemCount: solution.length,
+                      onPageChanged: (index) {
+                        setDialogState(() {
+                          currentPage = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        return buildMiniBoard(solution[index]);
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: currentPage == 0
+                              ? null
+                              : () {
+                                  pageController.previousPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Anterior'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.deepPurple,
+                            disabledBackgroundColor:
+                                Colors.white.withValues(alpha: 0.30),
+                            disabledForegroundColor:
+                                Colors.white.withValues(alpha: 0.60),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: currentPage == solution.length - 1
+                              ? null
+                              : () {
+                                  pageController.nextPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                          icon: const Icon(Icons.arrow_forward),
+                          label: const Text('Siguiente'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber,
+                            foregroundColor: Colors.deepPurple,
+                            disabledBackgroundColor:
+                                Colors.white.withValues(alpha: 0.30),
+                            disabledForegroundColor:
+                                Colors.white.withValues(alpha: 0.60),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 45,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Cerrar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+Widget _buildGameButton({
+  required String text,
+  required IconData icon,
+  required Color backgroundColor,
+  required Color foregroundColor,
+  required VoidCallback onPressed,
+}) {
+  return SizedBox(
+    height: 54,
+    child: ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Text(
+        text,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+    ),
+  );
+}
+
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF4A148C),
+              Color(0xFF7B1FA2),
+              Color(0xFFBA68C8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
-        const SizedBox(width: 48),
-      ],
-    );
-  }
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'Numbers Puzzle ${widget.size}x${widget.size}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
 
-  Widget _buildStats() {
-    return Row(
-      children: [
-        _buildStatCard(
-          icon: Icons.timer,
-          value: formatTime(),
-          label: 'Tiempo',
-        ),
-        const SizedBox(width: 14),
-        _buildStatCard(
-          icon: Icons.touch_app,
-          value: moves.toString(),
-          label: 'Movimientos',
-        ),
-      ],
-    );
-  }
+                const SizedBox(height: 30),
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String value,
-    required String label,
-  }) {
-    return Expanded(
+const SizedBox(height: 20),
+
+Row(
+  children: [
+    Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -822,22 +966,22 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
+            const Icon(
+              Icons.timer,
               color: Colors.white,
             ),
             const SizedBox(height: 6),
             Text(
-              value,
+              formatTime(),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            Text(
-              label,
-              style: const TextStyle(
+            const Text(
+              'Tiempo',
+              style: TextStyle(
                 color: Colors.white70,
                 fontSize: 13,
               ),
@@ -845,305 +989,35 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
           ],
         ),
       ),
-    );
-  }
+    ),
 
-  Widget _buildBoard() {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: GridView.builder(
-        itemCount: pieces.length,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: widget.size,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemBuilder: (context, index) {
-          int piece = pieces[index];
+    const SizedBox(width: 14),
 
-          if (piece == 0) {
-            return _buildEmptyPiece();
-          }
-
-          bool isMovable = canMovePiece(index);
-          bool isLastMoved = lastMovedPiece == piece;
-
-          return GestureDetector(
-            onTap: () {
-              movePiece(index);
-            },
-            child: AnimatedScale(
-              scale: isLastMoved ? 1.08 : 1.0,
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutBack,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeInOut,
-                decoration: _pieceDecoration(isMovable),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  transitionBuilder: (child, animation) {
-                    return ScaleTransition(
-                      scale: animation,
-                      child: child,
-                    );
-                  },
-                  child: Center(
-                    key: ValueKey(piece),
-                    child: Text(
-                      piece.toString(),
-                      style: TextStyle(
-                        color: Colors.deepPurple,
-                        fontSize: widget.size == 5 ? 22 : 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildEmptyPiece() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.25),
-          width: 1,
-        ),
-      ),
-    );
-  }
-
-  BoxDecoration _pieceDecoration(bool isMovable) {
-    return BoxDecoration(
-      color: isMovable ? Colors.amber.withValues(alpha: 0.95) : Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: isMovable ? Colors.white : Colors.transparent,
-        width: isMovable ? 2 : 0,
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: isMovable
-              ? Colors.amber.withValues(alpha: 0.55)
-              : Colors.black.withValues(alpha: 0.25),
-          blurRadius: isMovable ? 14 : 6,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildGameButton(
-                text: 'Mezclar',
-                icon: Icons.shuffle,
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.deepPurple,
-                onPressed: () {
-                  shuffleByValidMoves();
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildGameButton(
-                text: 'Resolver A*',
-                icon: Icons.psychology,
-                backgroundColor: Colors.amber,
-                foregroundColor: Colors.deepPurple,
-                onPressed: () async {
-                  List<List<int>> solution = solveWithAStar();
-
-                  if (solution.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No se encontró solución'),
-                      ),
-                    );
-
-                    return;
-                  }
-
-                  await animateSolution(solution);
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildGameButton(
-                text: 'Paso a paso',
-                icon: Icons.visibility,
-                backgroundColor: Colors.white.withValues(alpha: 0.90),
-                foregroundColor: Colors.deepPurple,
-                onPressed: () {
-                  showStepByStepSolutionDialog();
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildGameButton(
-                text: 'Solución',
-                icon: Icons.check_circle,
-                backgroundColor: Colors.white.withValues(alpha: 0.90),
-                foregroundColor: Colors.deepPurple,
-                onPressed: () {
-                  showFinalSolutionDialog();
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGameButton({
-    required String text,
-    required IconData icon,
-    required Color backgroundColor,
-    required Color foregroundColor,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      height: 54,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(
-          text,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          foregroundColor: foregroundColor,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildMiniBoard(List<int> state) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: GridView.builder(
-        itemCount: state.length,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: widget.size,
-          crossAxisSpacing: 5,
-          mainAxisSpacing: 5,
-        ),
-        itemBuilder: (context, index) {
-          int piece = state[index];
-
-          if (piece == 0) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.30),
-                ),
-              ),
-            );
-          }
-
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                piece.toString(),
-                style: TextStyle(
-                  color: Colors.deepPurple,
-                  fontSize: widget.size == 5 ? 13 : 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildWinnerIcon() {
-    return Container(
-      width: 86,
-      height: 86,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.20),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.amber,
-          width: 3,
-        ),
-      ),
-      child: const Icon(
-        Icons.emoji_events,
-        color: Colors.amber,
-        size: 52,
-      ),
-    );
-  }
-
-  Widget _buildResultCard({
-    required IconData icon,
-    required String value,
-    required String label,
-  }) {
-    return Expanded(
+    Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(18),
+          color: Colors.white.withValues(alpha: 0.20),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
+            const Icon(
+              Icons.touch_app,
               color: Colors.white,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
-              value,
+              moves.toString(),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
+            const Text(
+              'Movimientos',
+              style: TextStyle(
                 color: Colors.white70,
                 fontSize: 13,
               ),
@@ -1151,37 +1025,179 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  ],
+),
 
-  // =========================
-  // BUILD PRINCIPAL
-  // =========================
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: _screenDecoration(),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 50),
-                _buildStats(),
                 const SizedBox(height: 30),
-                _buildBoard(),
-                const SizedBox(height: 48),
-                _buildActionButtons(),
-              ],
+
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: GridView.builder(
+                    itemCount: pieces.length,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: widget.size,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemBuilder: (context, index) {
+                      int piece = pieces[index];
+
+                      if (piece == 0) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              width: 1,
+                            ),
+                          ),
+                        );
+                      }
+
+bool isMovable = canMovePiece(index);
+bool isLastMoved = lastMovedPiece == piece;
+
+return GestureDetector(
+  onTap: () {
+    movePiece(index);
+  },
+  child: AnimatedScale(
+    scale: isLastMoved ? 1.08 : 1.0,
+    duration: const Duration(milliseconds: 180),
+    curve: Curves.easeOutBack,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        color: isMovable
+            ? Colors.amber.withValues(alpha: 0.95)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isMovable ? Colors.white : Colors.transparent,
+          width: isMovable ? 2 : 0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isMovable
+                ? Colors.amber.withValues(alpha: 0.55)
+                : Colors.black.withValues(alpha: 0.25),
+            blurRadius: isMovable ? 14 : 6,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        transitionBuilder: (child, animation) {
+          return ScaleTransition(
+            scale: animation,
+            child: child,
+          );
+        },
+        child: Center(
+          key: ValueKey(piece),
+          child: Text(
+            piece.toString(),
+            style: TextStyle(
+              color: isMovable ? Colors.deepPurple : Colors.deepPurple,
+              fontSize: widget.size == 5 ? 22 : 28,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
       ),
-    );
-  }
-}
+    ),
+  ),
+);
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                const SizedBox(height: 18),
+
+    Row(
+      children: [
+        Expanded(
+          child: _buildGameButton(
+            text: 'Mezclar',
+            icon: Icons.shuffle,
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.deepPurple,
+            onPressed: () {
+              shuffleByValidMoves();
+            },
+          ),
+        ),
+
+        const SizedBox(width: 12),
+
+        Expanded(
+          child: _buildGameButton(
+            text: 'Resolver A*',
+            icon: Icons.psychology,
+            backgroundColor: Colors.amber,
+            foregroundColor: Colors.deepPurple,
+            onPressed: () async {
+              List<List<int>> solution = solveWithAStar();
+
+              if (solution.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No se encontró solución'),
+                  ),
+                );
+                return;
+              }
+
+              await animateSolution(solution);
+            },
+          ),
+        ),
+      ],
+    ),
+
+    const SizedBox(height: 12),
+
+    Row(
+      children: [
+        Expanded(
+          child: _buildGameButton(
+            text: 'Paso a paso',
+            icon: Icons.visibility,
+            backgroundColor: Colors.white.withValues(alpha: 0.90),
+            foregroundColor: Colors.deepPurple,
+            onPressed: () {
+              showStepByStepSolutionDialog();
+            },
+          ),
+        ),
+
+        const SizedBox(width: 12),
+
+        Expanded(
+          child: _buildGameButton(
+            text: 'Solución',
+            icon: Icons.check_circle,
+            backgroundColor: Colors.white.withValues(alpha: 0.90),
+            foregroundColor: Colors.deepPurple,
+            onPressed: () {
+              showFinalSolutionDialog();
+            },
+          ),
+        ),
+      ],
+    ),
+                                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }

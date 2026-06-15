@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-
 class PuzzleAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool showBackButton;
   final List<Widget>? actions;
-
   const PuzzleAppBar({
     super.key,
     required this.title,
@@ -32,7 +30,7 @@ class PuzzleAppBar extends StatelessWidget implements PreferredSizeWidget {
           ? IconButton(
               icon: const Icon(
                 Icons.arrow_back_ios_new,
-                color: Colors.white,
+                color: Color.fromARGB(255, 146, 27, 27),
               ),
               onPressed: () {
                 Navigator.pop(context);
@@ -43,7 +41,6 @@ class PuzzleAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: actions,
     );
   }
-
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

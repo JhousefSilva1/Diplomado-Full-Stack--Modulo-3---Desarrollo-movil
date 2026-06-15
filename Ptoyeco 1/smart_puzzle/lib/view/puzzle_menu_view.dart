@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:smart_puzzle/view/app_bar.dart';
-import 'package:smart_puzzle/view/color_puzzle_view.dart';
-import 'package:smart_puzzle/view/image_puzzle_view.dart';
+// import 'package:smart_puzzle/screen/color_puzzle_view.dart';
+// import 'package:smart_puzzle/screen/image_puzzle_view.dart';
 import 'package:smart_puzzle/view/letter_puzzle_view.dart';
 import 'package:smart_puzzle/view/number_puzzle_view.dart';
-import 'package:smart_puzzle/view/shape_puzzle_view.dart';
+// import 'package:smart_puzzle/screen/shape_puzzle_view.dart';
 
 class PuzzleMenuView extends StatefulWidget {
   const PuzzleMenuView({super.key});
@@ -80,18 +80,18 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
                         title: 'Letters Puzzle',
                         icon: Icons.abc,
                       ),
-                      _buildPuzzleOption(
-                        title: 'Colors Puzzle',
-                        icon: Icons.palette,
-                      ),
-                      _buildPuzzleOption(
-                        title: 'Shapes Puzzle',
-                        icon: Icons.category,
-                      ),
-                      _buildPuzzleOption(
-                        title: 'Images Puzzle',
-                        icon: Icons.image,
-                      ),
+                      // _buildPuzzleOption(
+                      //   title: 'Colors Puzzle',
+                      //   icon: Icons.palette,
+                      // ),
+                      // _buildPuzzleOption(
+                      //   title: 'Shapes Puzzle',
+                      //   icon: Icons.category,
+                      // ),
+                      // _buildPuzzleOption(
+                      //   title: 'Images Puzzle',
+                      //   icon: Icons.image,
+                      // ),
                     ],
                   ),
                 ),
@@ -117,28 +117,29 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
                           builder: (context) => const LetterPuzzleView(size: 6),
                         ),
                       );
-                    } else if (selectedPuzzle == 'Colors Puzzle') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ColorPuzzleView(),
-                        ),
-                      );
-                    } else if (selectedPuzzle == 'Shapes Puzzle') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ShapePuzzleView(),
-                        ),
-                      );
-                    } else if (selectedPuzzle == 'Images Puzzle') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ImagePuzzleView(),
-                        ),
-                      );
                     }
+                    // } else if (selectedPuzzle == 'Colors Puzzle') {
+                    //   Navigator.push(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //       builder: (context) => const ColorPuzzleView(),
+                    //     ),
+                    //   );
+                    // } else if (selectedPuzzle == 'Shapes Puzzle') {
+                    //   Navigator.push(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //       builder: (context) => const ShapePuzzleView(),
+                    //     ),
+                    //   );
+                    // } else if (selectedPuzzle == 'Images Puzzle') {
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //     builder: (context) => const ImagePuzzleView(),
+                      //   ),
+                      // );
+                    
                   },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
