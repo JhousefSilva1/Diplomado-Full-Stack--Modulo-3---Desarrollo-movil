@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class PuzzleNode {
   final List<int> state;
@@ -28,7 +29,367 @@ class NumberPuzzleView extends StatefulWidget {
 }
 
 class _NumberPuzzleViewState extends State<NumberPuzzleView> {
+
+
+  void showFinalSolutionDialog() {
+  List<int> goalState = getGoalState();
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF4A148C),
+                Color(0xFF7B1FA2),
+                Color(0xFFBA68C8),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.check_circle,
+                color: Colors.amber,
+                size: 52,
+              ),
+
+              const SizedBox(height: 12),
+
+              const Text(
+                'Solución final',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              const Text(
+                'Así debe quedar armado el puzzle',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 15,
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              SizedBox(
+                height: 260,
+                child: buildMiniBoard(goalState),
+              ),
+
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Entendido',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+  Widget buildMiniBoard(List<int> state) {
+  return AspectRatio(
+    aspectRatio: 1,
+    child: GridView.builder(
+      itemCount: state.length,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: widget.size,
+        crossAxisSpacing: 5,
+        mainAxisSpacing: 5,
+      ),
+      itemBuilder: (context, index) {
+        int piece = state[index];
+
+        if (piece == 0) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.30),
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(
+              piece.toString(),
+              style: TextStyle(
+                color: Colors.deepPurple,
+                fontSize: widget.size == 5 ? 13 : 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
+  
+
+void checkIfGameFinished() {
+  if (isGoal(pieces) && !gameFinished) {
+    gameFinished = true;
+    timer?.cancel();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF4A148C),
+                  Color(0xFF7B1FA2),
+                  Color(0xFFBA68C8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 86,
+                  height: 86,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.20),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.amber,
+                      width: 3,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.emoji_events,
+                    color: Colors.amber,
+                    size: 52,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                const Text(
+                  '¡Puzzle completado!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                const Text(
+                  'Excelente trabajo',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.timer,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              formatTime(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Tiempo',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.touch_app,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              moves.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Movimientos',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      shuffleByValidMoves();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text(
+                      'Jugar otra vez',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.deepPurple,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pop(context);
+                  },
+                  child: const Text(
+                    'Volver al menú',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+
+  @override
+void dispose() {
+  timer?.cancel();
+  super.dispose();
+}
+
+
   late List<int> pieces;
+  int moves = 0;
+  int seconds = 0;
+  Timer? timer;
+  bool gameFinished = false;
 
   @override
   void initState() {
@@ -42,9 +403,32 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
       }
       return index + 1;
     });
+    startTimer();
   }
+  void startTimer() {
+      timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        setState(() {
+          seconds++;
+        });
+      });
+    }
 
-  void movePiece(int index) {
+    String formatTime() {
+      int minutes = seconds ~/ 60;
+      int remainingSeconds = seconds % 60;
+
+      String minutesText = minutes.toString().padLeft(2, '0');
+      String secondsText = remainingSeconds.toString().padLeft(2, '0');
+
+      return '$minutesText:$secondsText';
+    }
+
+    void resetGameStats() {
+      moves = 0;
+      seconds = 0;
+    }
+
+      void movePiece(int index) {
     int emptyIndex = pieces.indexOf(0);
 
     int selectedRow = index ~/ widget.size;
@@ -57,17 +441,25 @@ class _NumberPuzzleViewState extends State<NumberPuzzleView> {
         (selectedRow == emptyRow && (selectedCol - emptyCol).abs() == 1) ||
         (selectedCol == emptyCol && (selectedRow - emptyRow).abs() == 1);
 
-    if (isNextToEmpty) {
-      setState(() {
-        int temp = pieces[index];
-        pieces[index] = pieces[emptyIndex];
-        pieces[emptyIndex] = temp;
-      });
-    }
+if (isNextToEmpty && !gameFinished) {
+  setState(() {
+    int temp = pieces[index];
+    pieces[index] = pieces[emptyIndex];
+    pieces[emptyIndex] = temp;
+
+    moves++;
+  });
+
+  checkIfGameFinished();
+}
   }
 
 void shuffleByValidMoves() {
   setState(() {
+    resetGameStats();
+    gameFinished = false;
+    timer?.cancel();
+    startTimer();
     int totalPieces = widget.size * widget.size;
 
     pieces = List.generate(totalPieces, (index) {
@@ -267,14 +659,237 @@ List<List<int>> solveWithAStar() {
 }
 
 Future<void> animateSolution(List<List<int>> solution) async {
-  for (List<int> step in solution) {
+  for (int i = 1; i < solution.length; i++) {
     await Future.delayed(const Duration(milliseconds: 400));
 
     setState(() {
-      pieces = List.from(step);
+      pieces = List.from(solution[i]);
+      moves++;
     });
   }
+
+  checkIfGameFinished();
 }
+
+void showStepByStepSolutionDialog() {
+  List<List<int>> solution = solveWithAStar();
+
+  if (solution.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No se encontró solución'),
+      ),
+    );
+    return;
+  }
+
+  int currentPage = 0;
+  PageController pageController = PageController();
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF4A148C),
+                    Color(0xFF7B1FA2),
+                    Color(0xFFBA68C8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.lightbulb,
+                    color: Colors.amber,
+                    size: 48,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  const Text(
+                    'Solución encontrada',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    'Pasos necesarios: ${solution.length - 1}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 15,
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  Text(
+                    currentPage == 0
+                        ? 'Estado inicial'
+                        : 'Paso $currentPage de ${solution.length - 1}',
+                    style: const TextStyle(
+                      color: Colors.amber,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  SizedBox(
+                    height: 260,
+                    child: PageView.builder(
+                      controller: pageController,
+                      itemCount: solution.length,
+                      onPageChanged: (index) {
+                        setDialogState(() {
+                          currentPage = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        return buildMiniBoard(solution[index]);
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: currentPage == 0
+                              ? null
+                              : () {
+                                  pageController.previousPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Anterior'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.deepPurple,
+                            disabledBackgroundColor:
+                                Colors.white.withValues(alpha: 0.30),
+                            disabledForegroundColor:
+                                Colors.white.withValues(alpha: 0.60),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: currentPage == solution.length - 1
+                              ? null
+                              : () {
+                                  pageController.nextPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                          icon: const Icon(Icons.arrow_forward),
+                          label: const Text('Siguiente'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber,
+                            foregroundColor: Colors.deepPurple,
+                            disabledBackgroundColor:
+                                Colors.white.withValues(alpha: 0.30),
+                            disabledForegroundColor:
+                                Colors.white.withValues(alpha: 0.60),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 45,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Cerrar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+Widget _buildGameButton({
+  required String text,
+  required IconData icon,
+  required Color backgroundColor,
+  required Color foregroundColor,
+  required VoidCallback onPressed,
+}) {
+  return SizedBox(
+    height: 54,
+    child: ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Text(
+        text,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+    ),
+  );
+}
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -323,6 +938,84 @@ Future<void> animateSolution(List<List<int>> solution) async {
                     const SizedBox(width: 48),
                   ],
                 ),
+
+                const SizedBox(height: 30),
+
+const SizedBox(height: 20),
+
+Row(
+  children: [
+    Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.20),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.timer,
+              color: Colors.white,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              formatTime(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Text(
+              'Tiempo',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+
+    const SizedBox(width: 14),
+
+    Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.20),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.touch_app,
+              color: Colors.white,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              moves.toString(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Text(
+              'Movimientos',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  ],
+),
 
                 const SizedBox(height: 30),
 
@@ -386,71 +1079,81 @@ Future<void> animateSolution(List<List<int>> solution) async {
 
                 const SizedBox(height: 30),
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      shuffleByValidMoves();
-                    },
-                    icon: const Icon(Icons.shuffle),
-                    label: const Text(
-                      'Mezclar',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.deepPurple,
-                      elevation: 8,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 18),
 
-                const SizedBox(height: 15),
+Row(
+  children: [
+    Expanded(
+      child: _buildGameButton(
+        text: 'Mezclar',
+        icon: Icons.shuffle,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.deepPurple,
+        onPressed: () {
+          shuffleByValidMoves();
+        },
+      ),
+    ),
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      List<List<int>> solution = solveWithAStar();
+    const SizedBox(width: 12),
 
-                      if (solution.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('No se encontró solución'),
-                          ),
-                        );
-                        return;
-                      }
+    Expanded(
+      child: _buildGameButton(
+        text: 'Resolver A*',
+        icon: Icons.psychology,
+        backgroundColor: Colors.amber,
+        foregroundColor: Colors.deepPurple,
+        onPressed: () async {
+          List<List<int>> solution = solveWithAStar();
 
-                      await animateSolution(solution);
-                    },
-                    icon: const Icon(Icons.psychology),
-                    label: const Text(
-                      'Resolver con A*',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.deepPurple,
-                      elevation: 8,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          if (solution.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No se encontró solución'),
+              ),
+            );
+            return;
+          }
+
+          await animateSolution(solution);
+        },
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 12),
+
+Row(
+  children: [
+    Expanded(
+      child: _buildGameButton(
+        text: 'Paso a paso',
+        icon: Icons.visibility,
+        backgroundColor: Colors.white.withValues(alpha: 0.90),
+        foregroundColor: Colors.deepPurple,
+        onPressed: () {
+          showStepByStepSolutionDialog();
+        },
+      ),
+    ),
+
+    const SizedBox(width: 12),
+
+    Expanded(
+      child: _buildGameButton(
+        text: 'Solución',
+        icon: Icons.check_circle,
+        backgroundColor: Colors.white.withValues(alpha: 0.90),
+        foregroundColor: Colors.deepPurple,
+        onPressed: () {
+          showFinalSolutionDialog();
+        },
+      ),
+    ),
+  ],
+),
+                              ],
             ),
           ),
         ),
