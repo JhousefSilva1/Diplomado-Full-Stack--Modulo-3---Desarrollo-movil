@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:smart_puzzle/view/app_bar.dart';
+import 'package:smart_puzzle/view/color_puzzle_view.dart';
+import 'package:smart_puzzle/view/image_puzzle_view.dart';
+import 'package:smart_puzzle/view/letter_puzzle_view.dart';
+import 'package:smart_puzzle/view/number_puzzle_view.dart';
+import 'package:smart_puzzle/view/shape_puzzle_view.dart';
 
 class PuzzleMenuView extends StatefulWidget {
   const PuzzleMenuView({super.key});
@@ -97,10 +102,44 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Luego aquí navegaremos a la vista del puzzle
-                      print('Puzzle seleccionado: $selectedPuzzle');
-                    },
+                  onPressed: () {
+                    if (selectedPuzzle == 'Numbers Puzzle') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NumberPuzzleView(),
+                        ),
+                      );
+                    } else if (selectedPuzzle == 'Letters Puzzle') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LetterPuzzleView(),
+                        ),
+                      );
+                    } else if (selectedPuzzle == 'Colors Puzzle') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ColorPuzzleView(),
+                        ),
+                      );
+                    } else if (selectedPuzzle == 'Shapes Puzzle') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ShapePuzzleView(),
+                        ),
+                      );
+                    } else if (selectedPuzzle == 'Images Puzzle') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ImagePuzzleView(),
+                        ),
+                      );
+                    }
+                  },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.deepPurple,
