@@ -18,8 +18,42 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
         showBackButton: false,
       ),
       body: Center(
-        child: Text('Menu de Puzzles'),
-      )
-    );
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+              ElevatedButton(
+                onPressed: () {
+                  // Navigate to the puzzle view
+                },
+                child: const Text('Numbers Puzzle'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Navigate to the puzzle view
+                },
+                child: const Text('Letters Puzzle'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Navigate to the puzzle view
+                },
+                child: const Text('Colors Puzzle'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Navigate to the puzzle view
+                },
+                child: const Text('Shapes Puzzle'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Navigate to the puzzle view
+                },
+                child: const Text('Images Puzzle'),
+              ),
+            ],
+          ),
+        )
+      );
   }
 }
