@@ -19,7 +19,8 @@ class LetterPuzzleNode {
 }
 
 class LetterPuzzleView extends StatefulWidget {
-  const LetterPuzzleView({super.key});
+    final int size;
+  const LetterPuzzleView({super.key, required this.size});
 
   @override
   State<LetterPuzzleView> createState() => _LetterPuzzleViewState();
@@ -30,7 +31,7 @@ class _LetterPuzzleViewState extends State<LetterPuzzleView> {
   // VARIABLES
   // =========================
 
-  final int size = 3;
+  // final int size = 5;
 
   late List<String> pieces;
 
@@ -91,11 +92,11 @@ class _LetterPuzzleViewState extends State<LetterPuzzleView> {
   bool canMovePiece(int index) {
     int emptyIndex = pieces.indexOf('');
 
-    int selectedRow = index ~/ size;
-    int selectedCol = index % size;
+    int selectedRow = index ~/ widget.size;
+    int selectedCol = index % widget.size;
 
-    int emptyRow = emptyIndex ~/ size;
-    int emptyCol = emptyIndex % size;
+    int emptyRow = emptyIndex ~/ widget.size;
+    int emptyCol = emptyIndex % widget.size;
 
     return (selectedRow == emptyRow && (selectedCol - emptyCol).abs() == 1) ||
         (selectedCol == emptyCol && (selectedRow - emptyRow).abs() == 1);
@@ -146,24 +147,24 @@ class _LetterPuzzleViewState extends State<LetterPuzzleView> {
       for (int i = 0; i < shuffleMoves; i++) {
         int emptyIndex = pieces.indexOf('');
 
-        int emptyRow = emptyIndex ~/ size;
-        int emptyCol = emptyIndex % size;
+        int emptyRow = emptyIndex ~/ widget.size;
+        int emptyCol = emptyIndex % widget.size;
 
         List<int> possibleMoves = [];
 
         if (emptyRow > 0) {
-          possibleMoves.add(emptyIndex - size);
+          possibleMoves.add(emptyIndex - widget.size);
         }
 
-        if (emptyRow < size - 1) {
-          possibleMoves.add(emptyIndex + size);
+        if (emptyRow < widget.size - 1) {
+          possibleMoves.add(emptyIndex + widget.size);
         }
 
         if (emptyCol > 0) {
           possibleMoves.add(emptyIndex - 1);
         }
 
-        if (emptyCol < size - 1) {
+        if (emptyCol < widget.size - 1) {
           possibleMoves.add(emptyIndex + 1);
         }
 
@@ -201,19 +202,60 @@ class _LetterPuzzleViewState extends State<LetterPuzzleView> {
     return state.join(',');
   }
 
-  List<String> getGoalState() {
-    return [
-      'A',
-      'B',
-      'C',
-      'D',
-      'E',
-      'F',
-      'G',
-      'H',
-      '',
-    ];
+List<String> getGoalState() {
+  List<String> letters = [
+    'A',
+    'B',
+    'C',
+    'D',
+    'E',
+    'F',
+    'G',
+    'H',
+    'I',
+    'J',
+    'K',
+    'L',
+    'M',
+    'N',
+    'O',
+    'P',
+    'Q',
+    'R',
+    'S',
+    'T',
+    'U',
+    'V',
+    'W',
+    'X',
+    'Y',
+    'Z',
+    'Ä',
+    'Ö',
+    'Ü',
+    'ß',
+    'Ñ',
+    'LL',
+    'RR',
+    'CH',
+    '@',
+    '',
+
+    ''
+  ];
+
+  int totalPieces = widget.size * widget.size;
+
+  List<String> goal = [];
+
+  for (int i = 0; i < totalPieces - 1; i++) {
+    goal.add(letters[i]);
   }
+
+  goal.add('');
+
+  return goal;
+}
 
   bool isGoal(List<String> state) {
     List<String> goal = getGoalState();
@@ -239,12 +281,12 @@ class _LetterPuzzleViewState extends State<LetterPuzzleView> {
         continue;
       }
 
-      int currentRow = i ~/ size;
-      int currentCol = i % size;
+      int currentRow = i ~/ widget.size;
+      int currentCol = i % widget.size;
 
       int goalIndex = goal.indexOf(piece);
-      int goalRow = goalIndex ~/ size;
-      int goalCol = goalIndex % size;
+      int goalRow = goalIndex ~/ widget.size;
+      int goalCol = goalIndex % widget.size;
 
       distance += (currentRow - goalRow).abs() + (currentCol - goalCol).abs();
     }
@@ -257,24 +299,24 @@ class _LetterPuzzleViewState extends State<LetterPuzzleView> {
 
     int emptyIndex = state.indexOf('');
 
-    int emptyRow = emptyIndex ~/ size;
-    int emptyCol = emptyIndex % size;
+    int emptyRow = emptyIndex ~/ widget.size;
+    int emptyCol = emptyIndex % widget.size;
 
     List<int> possibleMoves = [];
 
     if (emptyRow > 0) {
-      possibleMoves.add(emptyIndex - size);
+      possibleMoves.add(emptyIndex - widget.size);
     }
 
-    if (emptyRow < size - 1) {
-      possibleMoves.add(emptyIndex + size);
+    if (emptyRow < widget.size - 1) {
+      possibleMoves.add(emptyIndex + widget.size);
     }
 
     if (emptyCol > 0) {
       possibleMoves.add(emptyIndex - 1);
     }
 
-    if (emptyCol < size - 1) {
+    if (emptyCol < widget.size - 1) {
       possibleMoves.add(emptyIndex + 1);
     }
 
@@ -840,7 +882,7 @@ class _LetterPuzzleViewState extends State<LetterPuzzleView> {
         itemCount: pieces.length,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: size,
+          crossAxisCount: widget.size,
           crossAxisSpacing: 8,
           mainAxisSpacing: 8,
         ),
@@ -1038,7 +1080,7 @@ class _LetterPuzzleViewState extends State<LetterPuzzleView> {
         itemCount: state.length,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: size,
+          crossAxisCount: widget.size,
           crossAxisSpacing: 5,
           mainAxisSpacing: 5,
         ),
