@@ -107,14 +107,14 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const NumberPuzzleView(size: 5),
+                          builder: (context) => const NumberPuzzleView(size: 4),
                         ),
                       );
                     } else if (selectedPuzzle == 'Letters Puzzle') {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const LetterPuzzleView(size: 6),
+                          builder: (context) => const LetterPuzzleView(size: 4),
                         ),
                       );
                     }
