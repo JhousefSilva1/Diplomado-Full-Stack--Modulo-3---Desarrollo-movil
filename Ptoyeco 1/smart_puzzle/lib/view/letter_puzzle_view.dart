@@ -1,402 +1,278 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:smart_puzzle/logic/puzzle_game_controller.dart';
 
-class LetterPuzzleNode {
-  final List<String> state;
-  final List<List<String>> path;
-  final int g;
-  final int h;
+import 'package:smart_puzzle/logic/sliding_puzzle_logic.dart';
 
-  LetterPuzzleNode({
-    required this.state,
-    required this.path,
-    required this.g,
-    required this.h,
-  });
-
-  int get f => g + h;
-}
 
 class LetterPuzzleView extends StatefulWidget {
-    final int size;
-  const LetterPuzzleView({super.key, required this.size});
+  final int size;
+
+  const LetterPuzzleView({
+    super.key,
+    required this.size,
+  });
 
   @override
   State<LetterPuzzleView> createState() => _LetterPuzzleViewState();
 }
 
 class _LetterPuzzleViewState extends State<LetterPuzzleView> {
-  // =========================
-  // VARIABLES
-  // =========================
 
-  // final int size = 5;
-
-  late List<String> pieces;
-
-  int moves = 0;
-  int seconds = 0;
-
-  Timer? timer;
-
-  bool gameFinished = false;
-  String? lastMovedPiece;
+late SlidingPuzzleLogic<String> puzzleLogic;
+late PuzzleGameController gameController;
+late List<String> pieces;
+String? lastMovedPiece;
 
   // =========================
   // CICLO DE VIDA
   // =========================
 
-  @override
-  void initState() {
-    super.initState();
+@override
+void initState() {
+  super.initState();
 
-    pieces = getGoalState();
+  pieces = getGoalState();
 
-    startTimer();
-  }
+  puzzleLogic = SlidingPuzzleLogic<String>(
+    size: widget.size,
+    emptyValue: '',
+    goalState: getGoalState(),
+  );
 
-  @override
-  void dispose() {
-    timer?.cancel();
-    super.dispose();
-  }
+  gameController = PuzzleGameController(
+    onUpdate: () {
+      if (mounted) {
+        setState(() {});
+      }
+    },
+  );
+}
+@override
+void dispose() {
+  gameController.dispose();
+  super.dispose();
+}
+
+  // =========================
+  // LÓGICA DEL RELOJ
+  // =========================
 
   // =========================
   // LÓGICA DEL JUEGO
   // =========================
 
-  void startTimer() {
-    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        seconds++;
-      });
-    });
-  }
-
-  String formatTime() {
-    int minutes = seconds ~/ 60;
-    int remainingSeconds = seconds % 60;
-
-    String minutesText = minutes.toString().padLeft(2, '0');
-    String secondsText = remainingSeconds.toString().padLeft(2, '0');
-
-    return '$minutesText:$secondsText';
-  }
-
-  void resetGameStats() {
-    moves = 0;
-    seconds = 0;
-  }
-
   bool canMovePiece(int index) {
-    int emptyIndex = pieces.indexOf('');
-
-    int selectedRow = index ~/ widget.size;
-    int selectedCol = index % widget.size;
-
-    int emptyRow = emptyIndex ~/ widget.size;
-    int emptyCol = emptyIndex % widget.size;
-
-    return (selectedRow == emptyRow && (selectedCol - emptyCol).abs() == 1) ||
-        (selectedCol == emptyCol && (selectedRow - emptyRow).abs() == 1);
-  }
-
-  void movePiece(int index) {
-    if (gameFinished) {
-      return;
-    }
-
-    int emptyIndex = pieces.indexOf('');
-
-    if (canMovePiece(index)) {
-      setState(() {
-        String temp = pieces[index];
-
-        pieces[index] = pieces[emptyIndex];
-        pieces[emptyIndex] = temp;
-
-        lastMovedPiece = temp;
-        moves++;
-      });
-
-      Future.delayed(const Duration(milliseconds: 250), () {
-        if (mounted) {
-          setState(() {
-            lastMovedPiece = null;
-          });
-        }
-      });
-
-      checkIfGameFinished();
-    }
-  }
-
-  void shuffleByValidMoves() {
-    setState(() {
-      resetGameStats();
-      gameFinished = false;
-
-      timer?.cancel();
-      startTimer();
-
-      pieces = getGoalState();
-
-      int shuffleMoves = 80;
-
-      for (int i = 0; i < shuffleMoves; i++) {
-        int emptyIndex = pieces.indexOf('');
-
-        int emptyRow = emptyIndex ~/ widget.size;
-        int emptyCol = emptyIndex % widget.size;
-
-        List<int> possibleMoves = [];
-
-        if (emptyRow > 0) {
-          possibleMoves.add(emptyIndex - widget.size);
-        }
-
-        if (emptyRow < widget.size - 1) {
-          possibleMoves.add(emptyIndex + widget.size);
-        }
-
-        if (emptyCol > 0) {
-          possibleMoves.add(emptyIndex - 1);
-        }
-
-        if (emptyCol < widget.size - 1) {
-          possibleMoves.add(emptyIndex + 1);
-        }
-
-        possibleMoves.shuffle();
-
-        int moveIndex = possibleMoves.first;
-
-        String temp = pieces[emptyIndex];
-        pieces[emptyIndex] = pieces[moveIndex];
-        pieces[moveIndex] = temp;
-      }
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Puzzle mezclado correctamente'),
-      ),
+    return puzzleLogic.canMovePiece(
+      pieces: pieces,
+      index: index,
     );
   }
 
-  void checkIfGameFinished() {
-    if (isGoal(pieces) && !gameFinished) {
-      gameFinished = true;
-      timer?.cancel();
-
-      showGameFinishedDialog();
-    }
+void movePiece(int index) {
+  if (gameController.gameFinished) {
+    return;
   }
+
+  int emptyIndex = pieces.indexOf('');
+
+  if (canMovePiece(index)) {
+    gameController.startTimerIfNeeded();
+
+    setState(() {
+      String temp = pieces[index];
+
+      pieces[index] = pieces[emptyIndex];
+      pieces[emptyIndex] = temp;
+
+      lastMovedPiece = temp;
+      gameController.addMove();
+    });
+
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (mounted) {
+        setState(() {
+          lastMovedPiece = null;
+        });
+      }
+    });
+
+    checkIfGameFinished();
+  }
+}
+
+void shuffleByValidMoves() {
+  setState(() {
+    gameController.resetGameStats();
+
+    int shuffleMoves = widget.size <= 3 ? 60 : 80;
+
+    pieces = puzzleLogic.shuffleByValidMoves(
+      shuffleMoves: shuffleMoves,
+    );
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Puzzle mezclado correctamente'),
+    ),
+  );
+}
+
+void checkIfGameFinished() {
+  if (isGoal(pieces) && !gameController.gameFinished) {
+    gameController.finishGame();
+
+    showGameFinishedDialog();
+  }
+}
 
   // =========================
   // ALGORITMO A*
   // =========================
 
-  String stateToString(List<String> state) {
-    return state.join(',');
+  // String stateToString(List<String> state) {
+  //   return state.join(',');
+  // }
+
+  List<String> getGoalState() {
+    List<String> letters = [
+      'A',
+      'B',
+      'C',
+      'D',
+      'E',
+      'F',
+      'G',
+      'H',
+      'I',
+      'J',
+      'K',
+      'L',
+      'M',
+      'N',
+      'O',
+      'P',
+      'Q',
+      'R',
+      'S',
+      'T',
+      'U',
+      'V',
+      'W',
+      'X',
+      'Y',
+      'Z',
+      'Ä',
+      'Ö',
+      'Ü',
+      'ß',
+      'Ñ',
+      'LL',
+      'RR',
+      'CH',
+      '@',
+      '#',
+      '',
+    ];
+
+    int totalPieces = widget.size * widget.size;
+
+    List<String> goal = [];
+
+    for (int i = 0; i < totalPieces - 1; i++) {
+      goal.add(letters[i]);
+    }
+
+    goal.add('');
+
+    return goal;
   }
-
-List<String> getGoalState() {
-  List<String> letters = [
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-    'G',
-    'H',
-    'I',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'U',
-    'V',
-    'W',
-    'X',
-    'Y',
-    'Z',
-    'Ä',
-    'Ö',
-    'Ü',
-    'ß',
-    'Ñ',
-    'LL',
-    'RR',
-    'CH',
-    '@',
-    '',
-
-    ''
-  ];
-
-  int totalPieces = widget.size * widget.size;
-
-  List<String> goal = [];
-
-  for (int i = 0; i < totalPieces - 1; i++) {
-    goal.add(letters[i]);
-  }
-
-  goal.add('');
-
-  return goal;
-}
 
   bool isGoal(List<String> state) {
-    List<String> goal = getGoalState();
-
-    for (int i = 0; i < state.length; i++) {
-      if (state[i] != goal[i]) {
-        return false;
-      }
-    }
-
-    return true;
+    return puzzleLogic.isGoal(state);
   }
 
-  int manhattanDistance(List<String> state) {
-    int distance = 0;
+  // int manhattanDistance(List<String> state) {
+  //   int distance = 0;
 
-    List<String> goal = getGoalState();
+  //   List<String> goal = getGoalState();
 
-    for (int i = 0; i < state.length; i++) {
-      String piece = state[i];
+  //   for (int i = 0; i < state.length; i++) {
+  //     String piece = state[i];
 
-      if (piece == '') {
-        continue;
-      }
+  //     if (piece == '') {
+  //       continue;
+  //     }
 
-      int currentRow = i ~/ widget.size;
-      int currentCol = i % widget.size;
+  //     int currentRow = i ~/ widget.size;
+  //     int currentCol = i % widget.size;
 
-      int goalIndex = goal.indexOf(piece);
-      int goalRow = goalIndex ~/ widget.size;
-      int goalCol = goalIndex % widget.size;
+  //     int goalIndex = goal.indexOf(piece);
+  //     int goalRow = goalIndex ~/ widget.size;
+  //     int goalCol = goalIndex % widget.size;
 
-      distance += (currentRow - goalRow).abs() + (currentCol - goalCol).abs();
-    }
+  //     distance += (currentRow - goalRow).abs() + (currentCol - goalCol).abs();
+  //   }
 
-    return distance;
-  }
+  //   return distance;
+  // }
 
-  List<List<String>> getNeighbors(List<String> state) {
-    List<List<String>> neighbors = [];
+  // List<List<String>> getNeighbors(List<String> state) {
+  //   List<List<String>> neighbors = [];
 
-    int emptyIndex = state.indexOf('');
+  //   int emptyIndex = state.indexOf('');
 
-    int emptyRow = emptyIndex ~/ widget.size;
-    int emptyCol = emptyIndex % widget.size;
+  //   int emptyRow = emptyIndex ~/ widget.size;
+  //   int emptyCol = emptyIndex % widget.size;
 
-    List<int> possibleMoves = [];
+  //   List<int> possibleMoves = [];
 
-    if (emptyRow > 0) {
-      possibleMoves.add(emptyIndex - widget.size);
-    }
+  //   if (emptyRow > 0) {
+  //     possibleMoves.add(emptyIndex - widget.size);
+  //   }
 
-    if (emptyRow < widget.size - 1) {
-      possibleMoves.add(emptyIndex + widget.size);
-    }
+  //   if (emptyRow < widget.size - 1) {
+  //     possibleMoves.add(emptyIndex + widget.size);
+  //   }
 
-    if (emptyCol > 0) {
-      possibleMoves.add(emptyIndex - 1);
-    }
+  //   if (emptyCol > 0) {
+  //     possibleMoves.add(emptyIndex - 1);
+  //   }
 
-    if (emptyCol < widget.size - 1) {
-      possibleMoves.add(emptyIndex + 1);
-    }
+  //   if (emptyCol < widget.size - 1) {
+  //     possibleMoves.add(emptyIndex + 1);
+  //   }
 
-    for (int moveIndex in possibleMoves) {
-      List<String> newState = List.from(state);
+  //   for (int moveIndex in possibleMoves) {
+  //     List<String> newState = List.from(state);
 
-      String temp = newState[emptyIndex];
-      newState[emptyIndex] = newState[moveIndex];
-      newState[moveIndex] = temp;
+  //     String temp = newState[emptyIndex];
+  //     newState[emptyIndex] = newState[moveIndex];
+  //     newState[moveIndex] = temp;
 
-      neighbors.add(newState);
-    }
+  //     neighbors.add(newState);
+  //   }
 
-    return neighbors;
-  }
+  //   return neighbors;
+  // }
 
-  List<List<String>> solveWithAStar() {
-    List<String> start = List.from(pieces);
-
-    List<LetterPuzzleNode> openList = [];
-    Set<String> closedList = {};
-
-    openList.add(
-      LetterPuzzleNode(
-        state: start,
-        path: [start],
-        g: 0,
-        h: manhattanDistance(start),
-      ),
-    );
-
-    int iterations = 0;
-    int maxIterations = 20000;
-
-    while (openList.isNotEmpty && iterations < maxIterations) {
-      iterations++;
-
-      openList.sort((a, b) => a.f.compareTo(b.f));
-
-      LetterPuzzleNode currentNode = openList.removeAt(0);
-
-      if (isGoal(currentNode.state)) {
-        return currentNode.path;
-      }
-
-      closedList.add(stateToString(currentNode.state));
-
-      List<List<String>> neighbors = getNeighbors(currentNode.state);
-
-      for (List<String> neighbor in neighbors) {
-        String key = stateToString(neighbor);
-
-        if (closedList.contains(key)) {
-          continue;
-        }
-
-        List<List<String>> newPath = List.from(currentNode.path);
-        newPath.add(neighbor);
-
-        openList.add(
-          LetterPuzzleNode(
-            state: neighbor,
-            path: newPath,
-            g: currentNode.g + 1,
-            h: manhattanDistance(neighbor),
-          ),
-        );
-      }
-    }
-
-    return [];
-  }
+List<List<String>> solveWithAStar() {
+  return puzzleLogic.solveWithAStar(
+    startState: List.from(pieces),
+  );
+}
 
   Future<void> animateSolution(List<List<String>> solution) async {
     for (int i = 1; i < solution.length; i++) {
       await Future.delayed(const Duration(milliseconds: 400));
 
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         pieces = List.from(solution[i]);
-        moves++;
+        gameController.addMove();
       });
     }
 
@@ -406,6 +282,106 @@ List<String> getGoalState() {
   // =========================
   // DIÁLOGOS
   // =========================
+
+  void showNoSolutionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: _dialogDecoration(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.redAccent,
+                      width: 3,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.redAccent,
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'No hay solución',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'El algoritmo A* no encontró una forma de resolver este estado del puzzle.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.close),
+                    label: const Text(
+                      'Cerrar',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.deepPurple,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    shuffleByValidMoves();
+                  },
+                  icon: const Icon(
+                    Icons.shuffle,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Mezclar otra vez',
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   void showFinalSolutionDialog() {
     List<String> goalState = getGoalState();
@@ -483,159 +459,197 @@ List<String> getGoalState() {
     );
   }
 
-  void showStepByStepSolutionDialog() {
-    List<List<String>> solution = solveWithAStar();
+void showStepByStepSolutionDialog() {
+  List<List<String>> solution = solveWithAStar();
 
-    if (solution.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se encontró solución'),
-        ),
-      );
-
-      return;
-    }
-
-    int currentPage = 0;
-    PageController pageController = PageController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: _dialogDecoration(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.lightbulb,
-                      color: Colors.amber,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Solución encontrada',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Pasos necesarios: ${solution.length - 1}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      currentPage == 0
-                          ? 'Estado inicial'
-                          : 'Paso $currentPage de ${solution.length - 1}',
-                      style: const TextStyle(
-                        color: Colors.amber,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      height: 260,
-                      child: PageView.builder(
-                        controller: pageController,
-                        itemCount: solution.length,
-                        onPageChanged: (index) {
-                          setDialogState(() {
-                            currentPage = index;
-                          });
-                        },
-                        itemBuilder: (context, index) {
-                          return buildMiniBoard(solution[index]);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: currentPage == 0
-                                ? null
-                                : () {
-                                    pageController.previousPage(
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  },
-                            icon: const Icon(Icons.arrow_back),
-                            label: const Text('Anterior'),
-                            style: _dialogButtonStyle(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.deepPurple,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: currentPage == solution.length - 1
-                                ? null
-                                : () {
-                                    pageController.nextPage(
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  },
-                            icon: const Icon(Icons.arrow_forward),
-                            label: const Text('Siguiente'),
-                            style: _dialogButtonStyle(
-                              backgroundColor: Colors.amber,
-                              foregroundColor: Colors.deepPurple,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text(
-                          'Cerrar',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+  if (solution.isEmpty) {
+    showNoSolutionDialog();
+    return;
   }
+
+  int currentPage = 0;
+  PageController pageController = PageController();
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          final screenSize = MediaQuery.of(context).size;
+
+          double boardSize = screenSize.width * 0.72;
+
+          if (widget.size >= 5) {
+            boardSize = screenSize.width * 0.68;
+          }
+
+          if (boardSize > 280) {
+            boardSize = 280;
+          }
+
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 18,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Container(
+              width: double.infinity,
+              constraints: BoxConstraints(
+                maxHeight: screenSize.height * 0.92,
+              ),
+              padding: const EdgeInsets.all(16),
+              decoration: _dialogDecoration(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.lightbulb,
+                    color: Colors.amber,
+                    size: 40,
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  const Text(
+                    'Solución encontrada',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    'Pasos necesarios: ${solution.length - 1}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    currentPage == 0
+                        ? 'Estado inicial'
+                        : 'Paso $currentPage de ${solution.length - 1}',
+                    style: const TextStyle(
+                      color: Colors.amber,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    width: boardSize,
+                    height: boardSize,
+                    child: PageView.builder(
+                      controller: pageController,
+                      itemCount: solution.length,
+                      onPageChanged: (index) {
+                        setDialogState(() {
+                          currentPage = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        return buildMiniBoard(solution[index]);
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: currentPage == 0
+                              ? null
+                              : () {
+                                  pageController.previousPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                          icon: const Icon(Icons.arrow_back, size: 18),
+                          label: const Text(
+                            'Anterior',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: _dialogButtonStyle(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.deepPurple,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: currentPage == solution.length - 1
+                              ? null
+                              : () {
+                                  pageController.nextPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                          icon: const Icon(Icons.arrow_forward, size: 18),
+                          label: const Text(
+                            'Siguiente',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: _dialogButtonStyle(
+                            backgroundColor: Colors.amber,
+                            foregroundColor: Colors.deepPurple,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 42,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Cerrar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   void showGameFinishedDialog() {
     showDialog(
@@ -679,13 +693,13 @@ List<String> getGoalState() {
                   children: [
                     _buildResultCard(
                       icon: Icons.timer,
-                      value: formatTime(),
+                      value: gameController.formatTime(),
                       label: 'Tiempo',
                     ),
                     const SizedBox(width: 12),
                     _buildResultCard(
                       icon: Icons.touch_app,
-                      value: moves.toString(),
+                      value: gameController.moves.toString(),
                       label: 'Movimientos',
                     ),
                   ],
@@ -801,11 +815,11 @@ List<String> getGoalState() {
             color: Colors.white,
           ),
         ),
-        const Expanded(
+        Expanded(
           child: Text(
-            'Letters Puzzle 3x3',
+            'Letters Puzzle ${widget.size}x${widget.size}',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 26,
               fontWeight: FontWeight.bold,
@@ -822,13 +836,13 @@ List<String> getGoalState() {
       children: [
         _buildStatCard(
           icon: Icons.timer,
-          value: formatTime(),
+          value: gameController.formatTime(),
           label: 'Tiempo',
         ),
         const SizedBox(width: 14),
         _buildStatCard(
           icon: Icons.touch_app,
-          value: moves.toString(),
+          value: gameController.moves.toString(),
           label: 'Movimientos',
         ),
       ],
@@ -920,9 +934,9 @@ List<String> getGoalState() {
                     key: ValueKey(piece),
                     child: Text(
                       piece,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.deepPurple,
-                        fontSize: 32,
+                        fontSize: widget.size >= 5 ? 22 : 32,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -996,16 +1010,18 @@ List<String> getGoalState() {
                   List<List<String>> solution = solveWithAStar();
 
                   if (solution.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No se encontró solución'),
-                      ),
-                    );
-
+                    showNoSolutionDialog();
                     return;
                   }
 
-                  await animateSolution(solution);
+                setState(() {
+                  gameController.resetGameStats();
+                  gameController.timerStarted = true;
+                });
+
+                gameController.startTimer();
+
+                await animateSolution(solution);
                 },
               ),
             ),
@@ -1074,6 +1090,16 @@ List<String> getGoalState() {
   }
 
   Widget buildMiniBoard(List<String> state) {
+    double fontSize = 22;
+
+    if (widget.size == 4) {
+      fontSize = 20;
+    } else if (widget.size == 5) {
+      fontSize = 15;
+    } else if (widget.size >= 6) {
+      fontSize = 12;
+    }
+
     return AspectRatio(
       aspectRatio: 1,
       child: GridView.builder(
@@ -1081,8 +1107,8 @@ List<String> getGoalState() {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: widget.size,
-          crossAxisSpacing: 5,
-          mainAxisSpacing: 5,
+          crossAxisSpacing: 4,
+          mainAxisSpacing: 4,
         ),
         itemBuilder: (context, index) {
           String piece = state[index];
@@ -1107,9 +1133,9 @@ List<String> getGoalState() {
             child: Center(
               child: Text(
                 piece,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.deepPurple,
-                  fontSize: 22,
+                  fontSize: fontSize,
                   fontWeight: FontWeight.bold,
                 ),
               ),

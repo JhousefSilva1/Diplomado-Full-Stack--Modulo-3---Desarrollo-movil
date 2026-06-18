@@ -1,25 +1,29 @@
 import 'package:flutter/material.dart';
-
-import 'package:smart_puzzle/logic/sliding_puzzle_logic.dart';
 import 'package:smart_puzzle/view/app_bar.dart';
-import 'package:smart_puzzle/view/puzzle_size_view.dart';
+import 'package:smart_puzzle/view/letter_puzzle_view.dart';
+import 'package:smart_puzzle/view/number_puzzle_view.dart';
 
-class PuzzleMenuView extends StatefulWidget {
-  const PuzzleMenuView({super.key});
+class PuzzleSizeView extends StatefulWidget {
+  final String selectedPuzzle;
+
+  const PuzzleSizeView({
+    super.key,
+    required this.selectedPuzzle,
+  });
 
   @override
-  State<PuzzleMenuView> createState() => _PuzzleMenuViewState();
+  State<PuzzleSizeView> createState() => _PuzzleSizeViewState();
 }
 
-class _PuzzleMenuViewState extends State<PuzzleMenuView> {
-  String selectedPuzzle = 'Numbers Puzzle';
+class _PuzzleSizeViewState extends State<PuzzleSizeView> {
+  int selectedSize = 3;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const PuzzleAppBar(
-        title: 'Puzzle Menu',
-        showBackButton: false,
+        title: 'Nivel de dificultad',
+        showBackButton: true,
       ),
       body: Container(
         width: double.infinity,
@@ -42,11 +46,12 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
               children: [
                 const SizedBox(height: 20),
 
-                const Text(
-                  'Smart Puzzle',
-                  style: TextStyle(
+                Text(
+                  widget.selectedPuzzle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 34,
+                    fontSize: 30,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -54,7 +59,7 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
                 const SizedBox(height: 8),
 
                 const Text(
-                  'Elige el tipo de puzzle que quieres jugar',
+                  'Escoge el tamaño del puzzle',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white70,
@@ -70,13 +75,29 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
                     crossAxisSpacing: 15,
                     mainAxisSpacing: 15,
                     children: [
-                      _buildPuzzleOption(
-                        title: 'Numbers Puzzle',
-                        icon: Icons.numbers,
+                      _buildSizeOption(
+                        size: 3,
+                        title: 'Fácil',
+                        subtitle: '3 x 3',
+                        icon: Icons.sentiment_satisfied_alt,
                       ),
-                      _buildPuzzleOption(
-                        title: 'Letters Puzzle',
-                        icon: Icons.abc,
+                      _buildSizeOption(
+                        size: 4,
+                        title: 'Normal',
+                        subtitle: '4 x 4',
+                        icon: Icons.extension,
+                      ),
+                      _buildSizeOption(
+                        size: 5,
+                        title: 'Difícil',
+                        subtitle: '5 x 5',
+                        icon: Icons.psychology,
+                      ),
+                      _buildSizeOption(
+                        size: 6,
+                        title: 'Experto',
+                        subtitle: '6 x 6',
+                        icon: Icons.local_fire_department,
                       ),
                     ],
                   ),
@@ -87,30 +108,42 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
                 SizedBox(
                   width: double.infinity,
                   height: 55,
-                  child: ElevatedButton(
+                  child: ElevatedButton.icon(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PuzzleSizeView(
-                            selectedPuzzle: selectedPuzzle,
+                      if (widget.selectedPuzzle == 'Numbers Puzzle') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => NumberPuzzleView(
+                              size: selectedSize,
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      } else if (widget.selectedPuzzle == 'Letters Puzzle') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LetterPuzzleView(
+                              size: selectedSize,
+                            ),
+                          ),
+                        );
+                      }
                     },
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text(
+                      'Jugar',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.deepPurple,
                       elevation: 8,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    child: const Text(
-                      'Comenzar',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -125,16 +158,18 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
     );
   }
 
-  Widget _buildPuzzleOption({
+  Widget _buildSizeOption({
+    required int size,
     required String title,
+    required String subtitle,
     required IconData icon,
   }) {
-    bool isSelected = selectedPuzzle == title;
+    bool isSelected = selectedSize == size;
 
     return GestureDetector(
       onTap: () {
         setState(() {
-          selectedPuzzle = title;
+          selectedSize = size;
         });
       },
       child: AnimatedContainer(
@@ -161,17 +196,31 @@ class _PuzzleMenuViewState extends State<PuzzleMenuView> {
           children: [
             Icon(
               icon,
-              size: 45,
+              size: 42,
               color: isSelected ? Colors.deepPurple : Colors.white,
             ),
+
             const SizedBox(height: 12),
+
             Text(
               title,
-              textAlign: TextAlign.center,
               style: TextStyle(
                 color: isSelected ? Colors.deepPurple : Colors.white,
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.deepPurple.withValues(alpha: 0.75)
+                    : Colors.white70,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
